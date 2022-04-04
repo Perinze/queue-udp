@@ -1,7 +1,6 @@
 import socket
 import queue
 import re
-import select
 
 host = 'localhost'
 port = 11451
@@ -19,15 +18,15 @@ class QueueServer(object):
 		self.TMP_SIZE = tmp_size
 		self.queue = queue.Queue()
 
-		self.regex = r"\^([\d,]+)\$"
+		self.regex = r"\^([\d\.,]+)\$"
 		self.delim = r","
 
 	def pop(self):
 		while self.queue.empty():	# is loop safe?
-			self.parse_buf()
+			self.parse()
 		return self.queue.get()
 
-	def parse_buf(self):
+	def parse(self):
 		self.recv()
 		while True:
 			match = re.search(self.regex, self.buf)
