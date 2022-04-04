@@ -35,7 +35,7 @@ class QueueServer(object):
 			_, end = match.span()
 			self.buf = self.buf[end:]
 			substr = match.group(1)
-			data = list(map(int, re.split(self.delim, substr)))
+			data = list(map(float, re.split(self.delim, substr)))
 			self.queue.put(data)
 
 	def recv(self):
