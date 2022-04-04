@@ -6,34 +6,37 @@ from tokenize import group
 host = 'localhost'
 port = 11451
 
-with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-	s.bind((host, port))
-	while True:
-		data, addr = s.recvfrom(1024)
-		print(f"{addr} => {data}")
-		s.sendto(data, addr)
-
 class QueueServer(object):
 
-	def __init__(self, host, port, block_size, regex):
+	def __init__(self, host, port, tmp_size=1024):
 		self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-		self.sock = s.bind((host, port))
-		self.buf = ""
-		self.block_size = block_size
+		self.sock.bind((host, port))
+		self.sock.setblocking(False)
+		self.buf = ''
+		self.TMP_SIZE = tmp_size
 		self.queue = queue.Queue()
-		# self.regex = regex
-		self.group_regex = r"\^([^;\^\$])+\$"
-		self.indiv_regex = r"(\d*\.\d+);?"
+		self.regex = r"\^([\d,]+)\$"
+		self.delim = r","
 
 	def pop(self):
-		while self.queue.empty():
+		while self.queue.empty():	# is loop safe?
 			self.parse_buf()
 		return self.queue.get()
 
 	def parse_buf(self):
-		with re.search(self.group_regex, self.buf) as data_group_match:
-			start, end = data_group_match.span()
+		while True:
+			tmp, _ = self.sock.recvfrom(self.TMP_SIZE)
+			if not tmp:
+				break
+			self.buf = ''.join([self.buf, bytes.decode(tmp)])
+		while True:
+			match = re.search(self.regex, self.buf)
+			_, end = match.span()
 			self.buf = self.buf[end:]
-			group_string = data_group_match.string()
-			data_list = re.findall(self.indiv_regex, group_string)
-			self.queue.put(data_list)
+			substr = match.group(1)
+			data = list(map(int, re.split(self.delim, substr)))
+			self.queue.put(data)
+
+if __name__ == '__main__':
+	qs = QueueServer(host, port)
+	print(qs.pop())
